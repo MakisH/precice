@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -13,54 +13,54 @@ BOOST_AUTO_TEST_CASE(AitkenAcceleration)
 
   using Eigen::Vector2d;
 
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-  Vector2d                 vertex{0.0, 0.0};
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
+  Vector2d             vertex{0.0, 0.0};
 
   if (context.isNamed("A")) {
     auto meshName = "A-Mesh";
-    int  vertexID = interface.setMeshVertex(meshName, vertex);
+    int  vertexID = participant.setMeshVertex(meshName, vertex);
     auto dataName = "Data";
 
-    interface.initialize();
-    double dt    = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt    = participant.getMaxTimeStepSize();
     double value = 1.0;
-    interface.writeData(meshName, dataName, {&vertexID, 1}, {&value, 1});
+    participant.writeData(meshName, dataName, {&vertexID, 1}, {&value, 1});
 
-    interface.requiresWritingCheckpoint();
-    interface.advance(dt);
-    interface.requiresReadingCheckpoint();
+    participant.requiresWritingCheckpoint();
+    participant.advance(dt);
+    participant.requiresReadingCheckpoint();
 
-    interface.requiresWritingCheckpoint();
-    interface.advance(dt);
-    interface.requiresReadingCheckpoint();
+    participant.requiresWritingCheckpoint();
+    participant.advance(dt);
+    participant.requiresReadingCheckpoint();
 
-    BOOST_TEST(not interface.isCouplingOngoing());
-    interface.finalize();
+    BOOST_TEST(not participant.isCouplingOngoing());
+    participant.finalize();
 
   } else {
     BOOST_TEST(context.isNamed("B"));
     auto meshName = "B-Mesh";
-    int  vertexID = interface.setMeshVertex(meshName, vertex);
+    int  vertexID = participant.setMeshVertex(meshName, vertex);
     auto dataName = "Data";
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
-    interface.requiresWritingCheckpoint();
-    interface.advance(dt);
-    interface.requiresReadingCheckpoint();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
+    participant.requiresWritingCheckpoint();
+    participant.advance(dt);
+    participant.requiresReadingCheckpoint();
 
     double value = -1.0;
 
-    dt = interface.getMaxTimeStepSize();
-    interface.readData(meshName, dataName, {&vertexID, 1}, dt, {&value, 1});
+    dt = participant.getMaxTimeStepSize();
+    participant.readData(meshName, dataName, {&vertexID, 1}, dt, {&value, 1});
     BOOST_TEST(value == 0.1); // due to initial underrelaxation
 
-    interface.requiresWritingCheckpoint();
-    interface.advance(dt);
-    interface.requiresReadingCheckpoint();
+    participant.requiresWritingCheckpoint();
+    participant.advance(dt);
+    participant.requiresReadingCheckpoint();
 
-    BOOST_TEST(not interface.isCouplingOngoing());
-    interface.finalize();
+    BOOST_TEST(not participant.isCouplingOngoing());
+    participant.finalize();
   }
 }
 

@@ -3,7 +3,7 @@
 #include "testing/Testing.hpp"
 
 #include <action/RecorderAction.hpp>
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 /**
@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE(ActionTimingsExplicit)
   PRECICE_TEST("SolverOne"_on(1_rank), "SolverTwo"_on(1_rank));
 
   using namespace precice;
-  SolverInterface interface(context.name, context.config(), 0, 1);
+  Participant participant(context.name, context.config(), 0, 1);
 
   std::string meshName;
   std::string writeDataName;
@@ -36,9 +36,9 @@ BOOST_AUTO_TEST_CASE(ActionTimingsExplicit)
     readDataName  = "Forces";
     writeValue    = 2;
   }
-  int                 dimensions = interface.getMeshDimensions(meshName);
+  int                 dimensions = participant.getMeshDimensions(meshName);
   std::vector<double> vertex(dimensions, 0);
-  int                 vertexID = interface.setMeshVertex(meshName, vertex);
+  int                 vertexID = participant.setMeshVertex(meshName, vertex);
 
   double dt = -1;
   BOOST_TEST(action::RecorderAction::records.empty());
@@ -46,13 +46,13 @@ BOOST_AUTO_TEST_CASE(ActionTimingsExplicit)
   std::vector<double> writeData(dimensions, writeValue);
   std::vector<double> readData(dimensions, -1);
 
-  if (interface.requiresInitialData()) {
+  if (participant.requiresInitialData()) {
     BOOST_TEST(context.isNamed("SolverTwo"));
-    interface.writeData(meshName, writeDataName, {&vertexID, 1}, writeData);
+    participant.writeData(meshName, writeDataName, {&vertexID, 1}, writeData);
   }
 
-  interface.initialize();
-  dt = interface.getMaxTimeStepSize();
+  participant.initialize();
+  dt = participant.getMaxTimeStepSize();
   BOOST_TEST(dt == 1.0);
 
   if (context.isNamed("SolverOne")) {
@@ -68,12 +68,12 @@ BOOST_AUTO_TEST_CASE(ActionTimingsExplicit)
 
   int iteration = 0;
 
-  while (interface.isCouplingOngoing()) {
-    interface.readData(meshName, readDataName, {&vertexID, 1}, dt, readData);
-    interface.writeData(meshName, writeDataName, {&vertexID, 1}, writeData);
-    interface.advance(dt);
-    double dt = interface.getMaxTimeStepSize();
-    BOOST_TEST(interface.isTimeWindowComplete());
+  while (participant.isCouplingOngoing()) {
+    participant.readData(meshName, readDataName, {&vertexID, 1}, dt, readData);
+    participant.writeData(meshName, writeDataName, {&vertexID, 1}, writeData);
+    participant.advance(dt);
+    double dt = participant.getMaxTimeStepSize();
+    BOOST_TEST(participant.isTimeWindowComplete());
     iteration++;
     if (context.isNamed("SolverOne") || iteration < 10) {
       BOOST_TEST(action::RecorderAction::records.size() == 2);
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(ActionTimingsExplicit)
     }
     action::RecorderAction::reset();
   }
-  interface.finalize();
+  participant.finalize();
 }
 
 BOOST_AUTO_TEST_SUITE_END() // Integration

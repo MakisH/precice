@@ -4,8 +4,8 @@
 #include "testing/Testing.hpp"
 
 #include "mesh/Utils.hpp"
-#include "precice/SolverInterface.hpp"
-#include "precice/impl/SolverInterfaceImpl.hpp"
+#include "precice/Participant.hpp"
+#include "precice/impl/ParticipantImpl.hpp"
 
 void testRBFMapping(const std::string configFile, const TestContext &context)
 {
@@ -41,62 +41,62 @@ void testRBFMapping(const std::string configFile, const TestContext &context)
   double expectedValTwoC = 77.5938805368033;
 
   if (context.isNamed("SolverOne")) {
-    precice::SolverInterface interface("SolverOne", configFile, 0, 1);
+    precice::Participant participant("SolverOne", configFile, 0, 1);
     // namespace is required because we are outside the fixture
     auto meshOneID = "MeshOne";
 
     // Setup mesh one.
     std::vector<int> ids;
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneA));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneB));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneC));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneD));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneE));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneF));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneG));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneH));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneI));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneJ));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneK));
-    ids.emplace_back(interface.setMeshVertex(meshOneID, coordOneL));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneA));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneB));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneC));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneD));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneE));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneF));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneG));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneH));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneI));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneJ));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneK));
+    ids.emplace_back(participant.setMeshVertex(meshOneID, coordOneL));
 
     // Initialize, thus sending the mesh.
-    interface.initialize();
-    double maxDt = interface.getMaxTimeStepSize();
-    BOOST_TEST(interface.isCouplingOngoing(), "Sending participant should have to advance once!");
+    participant.initialize();
+    double maxDt = participant.getMaxTimeStepSize();
+    BOOST_TEST(participant.isCouplingOngoing(), "Sending participant should have to advance once!");
     // Write the data to be send.
     auto dataAID = "DataOne";
-    BOOST_TEST(!interface.requiresGradientDataFor(meshOneID, dataAID));
+    BOOST_TEST(!participant.requiresGradientDataFor(meshOneID, dataAID));
 
-    interface.writeData(meshOneID, dataAID, ids, values);
+    participant.writeData(meshOneID, dataAID, ids, values);
 
     // Advance, thus send the data to the receiving partner.
-    interface.advance(maxDt);
-    BOOST_TEST(!interface.isCouplingOngoing(), "Sending participant should have to advance once!");
-    interface.finalize();
+    participant.advance(maxDt);
+    BOOST_TEST(!participant.isCouplingOngoing(), "Sending participant should have to advance once!");
+    participant.finalize();
   } else {
     BOOST_TEST(context.isNamed("SolverTwo"));
-    precice::SolverInterface interface("SolverTwo", configFile, 0, 1);
+    precice::Participant participant("SolverTwo", configFile, 0, 1);
     // namespace is required because we are outside the fixture
     auto meshTwoID = "MeshTwo";
 
     // Setup receiving mesh.
-    int idA = interface.setMeshVertex(meshTwoID, coordTwoA);
-    int idB = interface.setMeshVertex(meshTwoID, coordTwoB);
-    int idC = interface.setMeshVertex(meshTwoID, coordTwoC);
+    int idA = participant.setMeshVertex(meshTwoID, coordTwoA);
+    int idB = participant.setMeshVertex(meshTwoID, coordTwoB);
+    int idC = participant.setMeshVertex(meshTwoID, coordTwoC);
 
     // Initialize, thus receive the data and map.
-    interface.initialize();
-    double maxDt = interface.getMaxTimeStepSize();
-    BOOST_TEST(interface.isCouplingOngoing(), "Receiving participant should have to advance once!");
+    participant.initialize();
+    double maxDt = participant.getMaxTimeStepSize();
+    BOOST_TEST(participant.isCouplingOngoing(), "Receiving participant should have to advance once!");
 
     // Read the mapped data from the mesh.
     auto dataAID = "DataOne";
-    BOOST_TEST(!interface.requiresGradientDataFor(meshTwoID, dataAID));
+    BOOST_TEST(!participant.requiresGradientDataFor(meshTwoID, dataAID));
 
     double values[3];
     int    ids[] = {idA, idB, idC};
-    interface.readData(meshTwoID, dataAID, ids, maxDt, values);
+    participant.readData(meshTwoID, dataAID, ids, maxDt, values);
 
     // Due to Eigen 3.3.7 (Ubunu 2004) giving slightly different results
     BOOST_TEST(values[0] == expectedValTwoA, boost::test_tools::tolerance(1e-8));
@@ -104,9 +104,9 @@ void testRBFMapping(const std::string configFile, const TestContext &context)
     BOOST_TEST(values[2] == expectedValTwoC, boost::test_tools::tolerance(2e-3));
 
     // Verify that there is only one time step necessary.
-    interface.advance(maxDt);
-    BOOST_TEST(!interface.isCouplingOngoing(), "Receiving participant should have to advance once!");
-    interface.finalize();
+    participant.advance(maxDt);
+    BOOST_TEST(!participant.isCouplingOngoing(), "Receiving participant should have to advance once!");
+    participant.finalize();
   }
 }
 

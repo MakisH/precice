@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
     double expectedValueD = 15.0;
 
     // Target solver
-    precice::SolverInterface interface(context.name, context.config(), 0, 1);
+    precice::Participant participant(context.name, context.config(), 0, 1);
 
     // Set mesh
     Vector3d coordA{0.0, 0.0, 0.3};
@@ -31,39 +31,39 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
 
     auto meshName = "MeshTarget";
 
-    int idA = interface.setMeshVertex(meshName, coordA);
-    int idB = interface.setMeshVertex(meshName, coordB);
-    int idC = interface.setMeshVertex(meshName, coordC);
-    int idD = interface.setMeshVertex(meshName, coordD);
+    int idA = participant.setMeshVertex(meshName, coordA);
+    int idB = participant.setMeshVertex(meshName, coordB);
+    int idC = participant.setMeshVertex(meshName, coordC);
+    int idD = participant.setMeshVertex(meshName, coordD);
 
     // Initialize, the mesh
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Read the summed data from the mesh.
     auto   dataAID = "Target";
     double valueA, valueB, valueC, valueD;
 
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
 
-      interface.readData(meshName, dataAID, {&idA, 1}, dt, {&valueA, 1});
-      interface.readData(meshName, dataAID, {&idB, 1}, dt, {&valueB, 1});
-      interface.readData(meshName, dataAID, {&idC, 1}, dt, {&valueC, 1});
-      interface.readData(meshName, dataAID, {&idD, 1}, dt, {&valueD, 1});
+      participant.readData(meshName, dataAID, {&idA, 1}, dt, {&valueA, 1});
+      participant.readData(meshName, dataAID, {&idB, 1}, dt, {&valueB, 1});
+      participant.readData(meshName, dataAID, {&idC, 1}, dt, {&valueC, 1});
+      participant.readData(meshName, dataAID, {&idD, 1}, dt, {&valueD, 1});
 
       BOOST_TEST(valueA == expectedValueA);
       BOOST_TEST(valueB == expectedValueB);
       BOOST_TEST(valueC == expectedValueC);
       BOOST_TEST(valueD == expectedValueD);
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
     }
 
-    interface.finalize();
+    participant.finalize();
   } else if (context.isNamed("SolverSourceOne")) {
     // Source solver one
-    precice::SolverInterface interface(context.name, context.config(), 0, 1);
+    precice::Participant participant(context.name, context.config(), 0, 1);
 
     // Set mesh
     Vector3d coordA{0.0, 0.0, 0.3};
@@ -73,14 +73,14 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
 
     auto meshName = "MeshOne";
 
-    int idA = interface.setMeshVertex(meshName, coordA);
-    int idB = interface.setMeshVertex(meshName, coordB);
-    int idC = interface.setMeshVertex(meshName, coordC);
-    int idD = interface.setMeshVertex(meshName, coordD);
+    int idA = participant.setMeshVertex(meshName, coordA);
+    int idB = participant.setMeshVertex(meshName, coordB);
+    int idC = participant.setMeshVertex(meshName, coordC);
+    int idD = participant.setMeshVertex(meshName, coordD);
 
     // Initialize, the mesh
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     auto   dataAID = "SourceOne";
     double valueA  = 1.0;
@@ -88,21 +88,21 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
     double valueC  = 5.0;
     double valueD  = 7.0;
 
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
 
-      interface.writeData(meshName, dataAID, {&idA, 1}, {&valueA, 1});
-      interface.writeData(meshName, dataAID, {&idB, 1}, {&valueB, 1});
-      interface.writeData(meshName, dataAID, {&idC, 1}, {&valueC, 1});
-      interface.writeData(meshName, dataAID, {&idD, 1}, {&valueD, 1});
+      participant.writeData(meshName, dataAID, {&idA, 1}, {&valueA, 1});
+      participant.writeData(meshName, dataAID, {&idB, 1}, {&valueB, 1});
+      participant.writeData(meshName, dataAID, {&idC, 1}, {&valueC, 1});
+      participant.writeData(meshName, dataAID, {&idD, 1}, {&valueD, 1});
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
     }
-    interface.finalize();
+    participant.finalize();
   } else {
     BOOST_REQUIRE(context.isNamed("SolverSourceTwo"));
     // Source solver two
-    precice::SolverInterface interface(context.name, context.config(), 0, 1);
+    precice::Participant participant(context.name, context.config(), 0, 1);
 
     // Set mesh
     Vector3d coordA{0.0, 0.0, 0.3};
@@ -112,14 +112,14 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
 
     auto meshName = "MeshTwo";
 
-    int idA = interface.setMeshVertex(meshName, coordA);
-    int idB = interface.setMeshVertex(meshName, coordB);
-    int idC = interface.setMeshVertex(meshName, coordC);
-    int idD = interface.setMeshVertex(meshName, coordD);
+    int idA = participant.setMeshVertex(meshName, coordA);
+    int idB = participant.setMeshVertex(meshName, coordB);
+    int idC = participant.setMeshVertex(meshName, coordC);
+    int idD = participant.setMeshVertex(meshName, coordD);
 
     // Initialize, the mesh
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     auto   dataAID = "SourceTwo";
     double valueA  = 2.0;
@@ -127,18 +127,18 @@ BOOST_AUTO_TEST_CASE(SummationActionTwoSources)
     double valueC  = 6.0;
     double valueD  = 8.0;
 
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
 
-      interface.writeData(meshName, dataAID, {&idA, 1}, {&valueA, 1});
-      interface.writeData(meshName, dataAID, {&idB, 1}, {&valueB, 1});
-      interface.writeData(meshName, dataAID, {&idC, 1}, {&valueC, 1});
-      interface.writeData(meshName, dataAID, {&idD, 1}, {&valueD, 1});
+      participant.writeData(meshName, dataAID, {&idA, 1}, {&valueA, 1});
+      participant.writeData(meshName, dataAID, {&idB, 1}, {&valueB, 1});
+      participant.writeData(meshName, dataAID, {&idC, 1}, {&valueC, 1});
+      participant.writeData(meshName, dataAID, {&idD, 1}, {&valueD, 1});
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
     }
 
-    interface.finalize();
+    participant.finalize();
   }
 }
 

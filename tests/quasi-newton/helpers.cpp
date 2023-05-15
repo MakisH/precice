@@ -2,7 +2,7 @@
 
 #include "helpers.hpp"
 
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 #include "testing/Testing.hpp"
 
 /// tests for different QN settings if correct fixed point is reached
@@ -21,7 +21,7 @@ void runTestQN(std::string const &config, TestContext const &context)
     readDataName  = "Data1";
   }
 
-  precice::SolverInterface interface(context.name, config, context.rank, context.size);
+  precice::Participant participant(context.name, config, context.rank, context.size);
 
   VertexID vertexIDs[4];
 
@@ -31,31 +31,31 @@ void runTestQN(std::string const &config, TestContext const &context)
 
   if (context.isNamed("SolverOne")) {
     if (context.isPrimary()) {
-      interface.setMeshVertices(meshName, positions0, vertexIDs);
+      participant.setMeshVertices(meshName, positions0, vertexIDs);
     } else {
-      interface.setMeshVertices(meshName, positions1, vertexIDs);
+      participant.setMeshVertices(meshName, positions1, vertexIDs);
     }
   } else {
     BOOST_REQUIRE(context.isNamed("SolverTwo"));
     if (context.isPrimary()) {
-      interface.setMeshVertices(meshName, positions0, vertexIDs);
+      participant.setMeshVertices(meshName, positions0, vertexIDs);
     } else {
-      interface.setMeshVertices(meshName, positions1, vertexIDs);
+      participant.setMeshVertices(meshName, positions1, vertexIDs);
     }
   }
 
-  interface.initialize();
+  participant.initialize();
   double inValues[4]  = {0.0, 0.0, 0.0, 0.0};
   double outValues[4] = {0.0, 0.0, 0.0, 0.0};
 
   int iterations = 0;
 
-  while (interface.isCouplingOngoing()) {
-    if (interface.requiresWritingCheckpoint()) {
+  while (participant.isCouplingOngoing()) {
+    if (participant.requiresWritingCheckpoint()) {
     }
 
-    double preciceDt = interface.getMaxTimeStepSize();
-    interface.readData(meshName, readDataName, vertexIDs, preciceDt, inValues);
+    double preciceDt = participant.getMaxTimeStepSize();
+    participant.readData(meshName, readDataName, vertexIDs, preciceDt, inValues);
 
     /*
       Solves the following non-linear equations, which are extended to a fixed-point equation (simply +x)
@@ -79,15 +79,15 @@ void runTestQN(std::string const &config, TestContext const &context)
       outValues[3] = inValues[3] * inValues[3] - 4.0 + inValues[3];
     }
 
-    interface.writeData(meshName, writeDataName, vertexIDs, outValues);
-    interface.advance(1.0);
+    participant.writeData(meshName, writeDataName, vertexIDs, outValues);
+    participant.advance(1.0);
 
-    if (interface.requiresReadingCheckpoint()) {
+    if (participant.requiresReadingCheckpoint()) {
     }
     iterations++;
   }
 
-  interface.finalize();
+  participant.finalize();
 
   //relative residual in config is 1e-7, so 2 orders of magnitude less strict
   BOOST_TEST(outValues[0] == -2.0, boost::test_tools::tolerance(1e-5));
@@ -116,7 +116,7 @@ void runTestQNEmptyPartition(std::string const &config, TestContext const &conte
     readDataName  = "Data1";
   }
 
-  precice::SolverInterface interface(context.name, config, context.rank, context.size);
+  precice::Participant participant(context.name, config, context.rank, context.size);
 
   VertexID vertexIDs[4];
 
@@ -126,31 +126,31 @@ void runTestQNEmptyPartition(std::string const &config, TestContext const &conte
   if (context.isNamed("SolverOne")) {
     // All mesh is on primary rank
     if (context.isPrimary()) {
-      interface.setMeshVertices(meshName, positions0, vertexIDs);
+      participant.setMeshVertices(meshName, positions0, vertexIDs);
     }
   } else {
     BOOST_REQUIRE(context.isNamed("SolverTwo"));
     // All mesh is on secondary rank
     if (not context.isPrimary()) {
-      interface.setMeshVertices(meshName, positions0, vertexIDs);
+      participant.setMeshVertices(meshName, positions0, vertexIDs);
     }
   }
 
-  interface.initialize();
+  participant.initialize();
   double inValues[4]  = {0.0, 0.0, 0.0, 0.0};
   double outValues[4] = {0.0, 0.0, 0.0, 0.0};
 
   int iterations = 0;
 
-  while (interface.isCouplingOngoing()) {
-    if (interface.requiresWritingCheckpoint()) {
+  while (participant.isCouplingOngoing()) {
+    if (participant.requiresWritingCheckpoint()) {
     }
 
-    double preciceDt = interface.getMaxTimeStepSize();
+    double preciceDt = participant.getMaxTimeStepSize();
 
     if ((context.isNamed("SolverOne") and context.isPrimary()) or
         (context.isNamed("SolverTwo") and (not context.isPrimary()))) {
-      interface.readData(meshName, readDataName, vertexIDs, preciceDt, inValues);
+      participant.readData(meshName, readDataName, vertexIDs, preciceDt, inValues);
     }
 
     /*
@@ -177,16 +177,16 @@ void runTestQNEmptyPartition(std::string const &config, TestContext const &conte
 
     if ((context.isNamed("SolverOne") and context.isPrimary()) or
         (context.isNamed("SolverTwo") and (not context.isPrimary()))) {
-      interface.writeData(meshName, writeDataName, vertexIDs, outValues);
+      participant.writeData(meshName, writeDataName, vertexIDs, outValues);
     }
-    interface.advance(1.0);
+    participant.advance(1.0);
 
-    if (interface.requiresReadingCheckpoint()) {
+    if (participant.requiresReadingCheckpoint()) {
     }
     iterations++;
   }
 
-  interface.finalize();
+  participant.finalize();
 
   //relative residual in config is 1e-7, so 2 orders of magnitude less strict
   if ((context.isNamed("SolverOne") and context.isPrimary()) or

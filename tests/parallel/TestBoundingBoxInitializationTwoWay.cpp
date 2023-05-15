@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(TestBoundingBoxInitializationTwoWay)
     }
   }
 
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
 
   auto meshName     = context.name + "Mesh";
   auto forcesID     = "Forces";
@@ -77,23 +77,23 @@ BOOST_AUTO_TEST_CASE(TestBoundingBoxInitializationTwoWay)
 
   std::vector<int> vertexIDs;
   for (int i = i1; i < i2; i++) {
-    precice::VertexID vertexID = interface.setMeshVertex(meshName, positions[i]);
+    precice::VertexID vertexID = participant.setMeshVertex(meshName, positions[i]);
     vertexIDs.push_back(vertexID);
   }
 
-  interface.initialize();
+  participant.initialize();
 
   if (context.isNamed("Fluid")) {
     for (size_t i = 0; i < vertexIDs.size(); i++) {
-      interface.writeData(meshName, forcesID, {&vertexIDs[i], 1}, {data[i + i1].data(), 3});
+      participant.writeData(meshName, forcesID, {&vertexIDs[i], 1}, {data[i + i1].data(), 3});
     }
   }
 
-  double preciceDt = interface.getMaxTimeStepSize();
+  double preciceDt = participant.getMaxTimeStepSize();
 
   if (context.isNamed("Structure")) {
     for (size_t i = 0; i < vertexIDs.size(); i++) {
-      interface.readData(meshName, forcesID, {&vertexIDs[i], 1}, preciceDt, {data[i + i1].data(), 3});
+      participant.readData(meshName, forcesID, {&vertexIDs[i], 1}, preciceDt, {data[i + i1].data(), 3});
       for (size_t d = 0; d < 3; d++) {
         BOOST_TEST(expectedData[i + i1][d] == data[i + i1][d]);
       }
@@ -104,23 +104,23 @@ BOOST_AUTO_TEST_CASE(TestBoundingBoxInitializationTwoWay)
     }
 
     for (size_t i = 0; i < vertexIDs.size(); i++) {
-      interface.writeData(meshName, velocitiesID, {&vertexIDs[i], 1}, {data[i + i1].data(), 3});
+      participant.writeData(meshName, velocitiesID, {&vertexIDs[i], 1}, {data[i + i1].data(), 3});
     }
   }
 
-  interface.advance(1.0);
-  preciceDt = interface.getMaxTimeStepSize();
+  participant.advance(1.0);
+  preciceDt = participant.getMaxTimeStepSize();
 
   if (context.isNamed("Fluid")) {
     for (size_t i = 0; i < vertexIDs.size(); i++) {
-      interface.readData(meshName, velocitiesID, {&vertexIDs[i], 1}, preciceDt, {data[i + i1].data(), 3});
+      participant.readData(meshName, velocitiesID, {&vertexIDs[i], 1}, preciceDt, {data[i + i1].data(), 3});
       for (size_t d = 0; d < 3; d++) {
         BOOST_TEST(expectedData[i + i1][d] == data[i + i1][d]);
       }
     }
   }
 
-  interface.finalize();
+  participant.finalize();
 }
 
 BOOST_AUTO_TEST_SUITE_END() // Integration

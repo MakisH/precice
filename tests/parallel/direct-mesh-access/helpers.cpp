@@ -3,7 +3,7 @@
 #include "helpers.hpp"
 
 #include <numeric>
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 #include "testing/Testing.hpp"
 
 // StartIndex is here the first index to be used for writing on the secondary rank
@@ -16,20 +16,20 @@ void runTestAccessReceivedMesh(const TestContext &       context,
 {
   if (context.isNamed("SolverOne")) {
     // Defines the bounding box and writes data to the received mesh
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto                     otherMeshName = "MeshTwo";
-    auto                     dataName      = "Velocities";
-    const int                dim           = interface.getMeshDimensions(otherMeshName);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    auto                 otherMeshName = "MeshTwo";
+    auto                 dataName      = "Velocities";
+    const int            dim           = participant.getMeshDimensions(otherMeshName);
 
     std::vector<double> boundingBox = context.isPrimary() ? std::vector<double>({0.0, 1.0, 0.0, 3.5}) : boundingBoxSecondaryRank;
     // Set bounding box
-    interface.setMeshAccessRegion(otherMeshName, boundingBox);
-    // Initialize the solverinterface
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.setMeshAccessRegion(otherMeshName, boundingBox);
+    // Initialize the participant
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Get relevant size, allocate data structures and retrieve coordinates
-    const std::size_t meshSize = interface.getMeshVertexSize(otherMeshName);
+    const std::size_t meshSize = participant.getMeshVertexSize(otherMeshName);
 
     // According to the bounding boxes and vertices: the primary rank receives 3 vertices, the secondary rank 2
     const bool expectedSize = (context.isPrimary() && meshSize == 3) ||
@@ -39,7 +39,7 @@ void runTestAccessReceivedMesh(const TestContext &       context,
     // Allocate memory
     std::vector<int>    ids(meshSize);
     std::vector<double> coordinates(meshSize * dim);
-    interface.getMeshVerticesAndIDs(otherMeshName, ids, coordinates);
+    participant.getMeshVerticesAndIDs(otherMeshName, ids, coordinates);
 
     // Check the received vertex coordinates
     std::vector<double> expectedPositions = context.isPrimary() ? std::vector<double>({0.0, 1.0, 0.0, 2.0, 0.0, 3.0}) : expectedPositionSecondaryRank;
@@ -56,62 +56,62 @@ void runTestAccessReceivedMesh(const TestContext &       context,
     std::iota(primaryData.begin(), primaryData.end(), 1);
     std::vector<double> writeData = context.isPrimary() ? primaryData : writeDataSecondaryRank;
 
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
       // Write data
       if (context.isPrimary()) {
-        interface.writeData(otherMeshName, dataName, ids, writeData);
+        participant.writeData(otherMeshName, dataName, ids, writeData);
       } else {
         if (meshSize - startIndex > 0) {
           const int *ids_ptr  = &ids.at(startIndex);
           const auto vertices = meshSize - startIndex;
-          interface.writeData(otherMeshName, dataName, {ids_ptr, vertices}, {writeData.data(), vertices});
+          participant.writeData(otherMeshName, dataName, {ids_ptr, vertices}, {writeData.data(), vertices});
         }
       }
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
     }
   } else {
     // Defines the mesh and reads data
     BOOST_REQUIRE(context.isNamed("SolverTwo"));
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
 
     // Get IDs
     auto      meshName = "MeshTwo";
     auto      dataName = "Velocities";
-    const int dim      = interface.getMeshDimensions(meshName);
+    const int dim      = participant.getMeshDimensions(meshName);
     BOOST_TEST(dim == 2);
-    // Define the interface
+    // Define the participant
     std::vector<double> positions = context.isPrimary() ? std::vector<double>({0.0, 1.0, 0.0, 2.0}) : std::vector<double>({0.0, 3.0, 0.0, 4.0, 0.0, 5.0});
 
     const int        size = positions.size() / dim;
     std::vector<int> ids(size);
 
-    interface.setMeshVertices(meshName, positions, ids);
+    participant.setMeshVertices(meshName, positions, ids);
 
     {
       // Check, if we can use the 'getMeshVerticesAndIDs' function on provided meshes as well,
       // though the actual purpose is of course using it on received meshes
-      const std::size_t ownMeshSize = interface.getMeshVertexSize(meshName);
+      const std::size_t ownMeshSize = participant.getMeshVertexSize(meshName);
       BOOST_TEST(ownMeshSize == size);
       std::vector<int>    ownIDs(ownMeshSize);
       std::vector<double> ownCoordinates(ownMeshSize * dim);
-      interface.getMeshVerticesAndIDs(meshName, ownIDs, ownCoordinates);
+      participant.getMeshVerticesAndIDs(meshName, ownIDs, ownCoordinates);
       BOOST_TEST(ownIDs == ids);
       BOOST_TEST(testing::equals(positions, ownCoordinates));
     }
 
-    // Initialize the solverinterface
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    // Initialize the solverparticipant
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Start the time loop
     std::vector<double> readData(size);
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
-      interface.readData(meshName, dataName, ids, dt, readData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
+      participant.readData(meshName, dataName, ids, dt, readData);
 
       // Check the received data
       const std::vector<double> expectedReadData = context.isPrimary() ? std::vector<double>({1, 2}) : expectedReadDataSecondaryRank;

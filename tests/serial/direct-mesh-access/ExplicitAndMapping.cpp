@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -20,36 +20,36 @@ BOOST_AUTO_TEST_CASE(ExplicitAndMapping)
   PRECICE_TEST("SolverOne"_on(1_rank), "SolverTwo"_on(1_rank));
 
   // Set up Solverinterface
-  precice::SolverInterface interface(context.name, context.config(), 0, 1);
-  constexpr int            dim = 2;
+  precice::Participant participant(context.name, context.config(), 0, 1);
+  constexpr int        dim = 2;
 
   if (context.isNamed("SolverOne")) {
     auto ownMeshName   = "MeshOne";
     auto otherMeshName = "MeshTwo";
     auto readDataName  = "Forces";
     auto writeDataName = "Velocities";
-    BOOST_REQUIRE(interface.getMeshDimensions(ownMeshName) == 2);
-    BOOST_REQUIRE(interface.getMeshDimensions(otherMeshName) == 2);
+    BOOST_REQUIRE(participant.getMeshDimensions(ownMeshName) == 2);
+    BOOST_REQUIRE(participant.getMeshDimensions(otherMeshName) == 2);
 
     std::vector<double> positions = {0.2, 0.2, 0.1, 0.6, 0.1, 0.0, 0.1, 0.0};
     std::vector<int>    ownIDs(4, -1);
-    interface.setMeshVertices(ownMeshName, positions, ownIDs);
+    participant.setMeshVertices(ownMeshName, positions, ownIDs);
 
     std::array<double, dim * 2> boundingBox = {0.0, 1.0, 0.0, 1.0};
     // Define region of interest, where we could obtain direct write access
-    interface.setMeshAccessRegion(otherMeshName, boundingBox);
+    participant.setMeshAccessRegion(otherMeshName, boundingBox);
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
     // Get the size of the filtered mesh within the bounding box
     // (provided by the coupling participant)
-    const int otherMeshSize = interface.getMeshVertexSize(otherMeshName);
+    const int otherMeshSize = participant.getMeshVertexSize(otherMeshName);
     BOOST_TEST(otherMeshSize == 5);
 
     // Allocate a vector containing the vertices
     std::vector<double> solverTwoMesh(otherMeshSize * dim);
     std::vector<int>    otherIDs(otherMeshSize, -1);
-    interface.getMeshVerticesAndIDs(otherMeshName, otherIDs, solverTwoMesh);
+    participant.getMeshVerticesAndIDs(otherMeshName, otherIDs, solverTwoMesh);
     // Some dummy writeData
     std::array<double, 5> writeData({1, 2, 3, 4, 5});
 
@@ -58,12 +58,12 @@ BOOST_AUTO_TEST_CASE(ExplicitAndMapping)
     const std::vector<double> expectedData = {0.0, 0.0, 0.0, 0.05, 0.1, 0.1, 0.1, 0.0, 0.5, 0.5};
     BOOST_TEST(solverTwoMesh == expectedData);
 
-    while (interface.isCouplingOngoing()) {
+    while (participant.isCouplingOngoing()) {
       // Write data
-      interface.writeData(otherMeshName, writeDataName, otherIDs, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
-      interface.readData(ownMeshName, readDataName, ownIDs, dt, readData);
+      participant.writeData(otherMeshName, writeDataName, otherIDs, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
+      participant.readData(ownMeshName, readDataName, ownIDs, dt, readData);
       BOOST_TEST(readData == (std::vector<double>{2, 4, 3, 3}));
     }
 
@@ -77,10 +77,10 @@ BOOST_AUTO_TEST_CASE(ExplicitAndMapping)
     auto writeDataName = "Forces";
     auto readDataName  = "Velocities";
 
-    BOOST_REQUIRE(interface.getMeshDimensions(meshName) == 2);
+    BOOST_REQUIRE(participant.getMeshDimensions(meshName) == 2);
 
     // Define the mesh
-    interface.setMeshVertices(meshName, positions, ids);
+    participant.setMeshVertices(meshName, positions, ids);
     // Allocate data to read
     std::vector<double> readData(ids.size(), -10);
     std::vector<double> writeData;
@@ -88,14 +88,14 @@ BOOST_AUTO_TEST_CASE(ExplicitAndMapping)
       writeData.emplace_back(i);
 
     // Initialize
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
-    while (interface.isCouplingOngoing()) {
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
+    while (participant.isCouplingOngoing()) {
 
-      interface.writeData(meshName, writeDataName, ids, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
-      interface.readData(meshName, readDataName, ids, dt, readData);
+      participant.writeData(meshName, writeDataName, ids, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
+      participant.readData(meshName, readDataName, ids, dt, readData);
       // Expected data according to the writeData
       std::vector<double> expectedData({1, 2, 3, 4, 5});
       BOOST_TEST(precice::testing::equals(expectedData, readData));

@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -19,7 +19,7 @@ BOOST_AUTO_TEST_CASE(TestImplicit)
   double stateChange        = initialStateChange;
   int    computedTimesteps  = 0;
 
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
 
   if (context.isNamed("SolverOne")) {
     auto   meshName = "Square";
@@ -28,40 +28,40 @@ BOOST_AUTO_TEST_CASE(TestImplicit)
     pos[0] = 0.0;
     pos[1] = 0.0;
     pos[2] = 0.0;
-    interface.setMeshVertex(meshName, pos);
+    participant.setMeshVertex(meshName, pos);
     pos[0] = 1.0;
     pos[1] = 0.0;
     pos[2] = 0.0;
-    interface.setMeshVertex(meshName, pos);
+    participant.setMeshVertex(meshName, pos);
     pos[0] = 1.0;
     pos[1] = 1.0;
     pos[2] = 0.0;
-    interface.setMeshVertex(meshName, pos);
+    participant.setMeshVertex(meshName, pos);
     pos[0] = 0.0;
     pos[1] = 1.0;
     pos[2] = 0.0;
-    interface.setMeshVertex(meshName, pos);
+    participant.setMeshVertex(meshName, pos);
 
-    interface.initialize();
-    double maxDt = interface.getMaxTimeStepSize();
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    participant.initialize();
+    double maxDt = participant.getMaxTimeStepSize();
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         checkpoint     = state;
         iterationCount = 1;
       }
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         state = checkpoint;
       }
       iterationCount++;
       stateChange = initialStateChange / (double) iterationCount;
       state += stateChange;
-      interface.advance(maxDt);
-      maxDt = interface.getMaxTimeStepSize();
-      if (interface.isTimeWindowComplete()) {
+      participant.advance(maxDt);
+      maxDt = participant.getMaxTimeStepSize();
+      if (participant.isTimeWindowComplete()) {
         computedTimesteps++;
       }
     }
-    interface.finalize();
+    participant.finalize();
     BOOST_TEST(computedTimesteps == 4);
   } else {
     BOOST_TEST(context.isNamed("SolverTwo"));
@@ -71,27 +71,27 @@ BOOST_AUTO_TEST_CASE(TestImplicit)
     pos[0] = 0.0;
     pos[1] = 0.0;
     pos[2] = 0.0;
-    interface.setMeshVertex(meshName, pos);
-    interface.initialize();
-    double maxDt = interface.getMaxTimeStepSize();
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    participant.setMeshVertex(meshName, pos);
+    participant.initialize();
+    double maxDt = participant.getMaxTimeStepSize();
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         checkpoint     = state;
         iterationCount = 1;
       }
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         state = checkpoint;
         iterationCount++;
       }
       stateChange = initialStateChange / (double) iterationCount;
       state += stateChange;
-      interface.advance(maxDt);
-      maxDt = interface.getMaxTimeStepSize();
-      if (interface.isTimeWindowComplete()) {
+      participant.advance(maxDt);
+      maxDt = participant.getMaxTimeStepSize();
+      if (participant.isTimeWindowComplete()) {
         computedTimesteps++;
       }
     }
-    interface.finalize();
+    participant.finalize();
     BOOST_TEST(computedTimesteps == 4);
   }
 }

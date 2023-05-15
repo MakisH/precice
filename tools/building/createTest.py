@@ -117,17 +117,17 @@ PRECICE_TEST_BODY = """{
 
   // Implement your test here.
   BOOST_TEST(false);
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
 
   std::vector<VertexID> vertexIDs;
 
   if (context.isNamed(TODO)) {
-    auto meshID = interface.getMeshID(TODO);
-    auto dataID = interface.getDataID(TODO, meshID);
+    auto meshID = participant.getMeshID(TODO);
+    auto dataID = participant.getDataID(TODO, meshID);
 
     std::vector<double> coords;
 
-    interface.setMeshVertices(meshID, TODO, coords.data(), vertexIDs.data());
+    participant.setMeshVertices(meshID, TODO, coords.data(), vertexIDs.data());
   } else {
   }
 }
@@ -139,7 +139,7 @@ def generateTestSource(name, suite, filepath):
         raise BaseException("The test source at \"{}\" already exists.".format(filepath))
 
     includes = [
-        "<precice/SolverInterface.hpp>", "<vector>", '"testing/Testing.hpp"'
+        "<precice/Participant.hpp>", "<vector>", '"testing/Testing.hpp"'
     ]
     suites = ["Integration"] + suite
     space = [""]

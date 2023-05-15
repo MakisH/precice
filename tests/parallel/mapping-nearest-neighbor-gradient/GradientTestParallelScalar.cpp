@@ -20,11 +20,11 @@
 #include "mesh/SharedPointer.hpp"
 #include "mesh/Utils.hpp"
 #include "mesh/Vertex.hpp"
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 #include "precice/impl/MeshContext.hpp"
+#include "precice/impl/ParticipantImpl.hpp"
 #include "precice/impl/ParticipantState.hpp"
 #include "precice/impl/SharedPointer.hpp"
-#include "precice/impl/SolverInterfaceImpl.hpp"
 #include "precice/types.hpp"
 #include "testing/TestContext.hpp"
 #include "testing/Testing.hpp"
@@ -43,43 +43,43 @@ BOOST_AUTO_TEST_CASE(GradientTestParallelScalar)
   PRECICE_TEST("SolverOne"_on(3_ranks), "SolverTwo"_on(1_rank));
 
   if (context.isNamed("SolverOne")) {
-    SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto            meshName = "MeshOne";
-    auto            dataName = "Data2";
+    Participant participant(context.name, context.config(), context.rank, context.size);
+    auto        meshName = "MeshOne";
+    auto        dataName = "Data2";
 
     int    vertexIDs[2];
     double xCoord       = context.rank * 0.4 + 0.05;
     double positions[4] = {xCoord, 0.0, xCoord + 0.2, 0.0};
-    interface.setMeshVertices(meshName, positions, vertexIDs);
-    interface.initialize();
-    BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName) == false);
+    participant.setMeshVertices(meshName, positions, vertexIDs);
+    participant.initialize();
+    BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName) == false);
     Eigen::Vector2d values;
-    interface.advance(1.0);
-    interface.readData(meshName, dataName, vertexIDs, interface.getMaxTimeStepSize(), values);
+    participant.advance(1.0);
+    participant.readData(meshName, dataName, vertexIDs, participant.getMaxTimeStepSize(), values);
     Eigen::Vector2d expected(context.rank * 2.0 + 1.0 + 0.05, 2.0 * (context.rank + 1) + 0.05);
     BOOST_TEST(values == expected);
-    interface.finalize();
+    participant.finalize();
   } else {
     BOOST_REQUIRE(context.isNamed("SolverTwo"));
-    SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto            meshName = "MeshTwo";
-    int             vertexIDs[6];
-    double          positions[12] = {0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.6, 0.0, 0.8, 0.0, 1.0, 0.0};
-    interface.setMeshVertices(meshName, positions, vertexIDs);
-    interface.initialize();
+    Participant participant(context.name, context.config(), context.rank, context.size);
+    auto        meshName = "MeshTwo";
+    int         vertexIDs[6];
+    double      positions[12] = {0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.6, 0.0, 0.8, 0.0, 1.0, 0.0};
+    participant.setMeshVertices(meshName, positions, vertexIDs);
+    participant.initialize();
     auto dataName = "Data2";
-    BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName));
+    BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName));
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    interface.writeData(meshName, dataName, vertexIDs, values);
+    participant.writeData(meshName, dataName, vertexIDs, values);
 
-    if (interface.requiresGradientDataFor(meshName, dataName)) {
+    if (participant.requiresGradientDataFor(meshName, dataName)) {
 
       double gradients[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-      interface.writeGradientData(meshName, dataName, vertexIDs, gradients);
+      participant.writeGradientData(meshName, dataName, vertexIDs, gradients);
     }
-    interface.advance(1.0);
-    interface.finalize();
+    participant.advance(1.0);
+    participant.finalize();
   }
 }
 

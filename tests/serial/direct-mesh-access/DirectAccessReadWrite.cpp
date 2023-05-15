@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 // Test case for a direct mesh access by SolverTwo to a mesh defined
@@ -16,20 +16,20 @@ BOOST_AUTO_TEST_CASE(DirectAccessReadWrite)
 
   if (context.isNamed("SolverOne")) {
     // Set up Solverinterface
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    constexpr int            dim              = 2;
-    const auto               providedMeshName = "MeshOne";
-    const auto               readDataName     = "Forces";
-    const auto               writeDataName    = "Velocities";
-    BOOST_TEST(interface.getMeshDimensions(providedMeshName) == 2);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    constexpr int        dim              = 2;
+    const auto           providedMeshName = "MeshOne";
+    const auto           readDataName     = "Forces";
+    const auto           writeDataName    = "Velocities";
+    BOOST_TEST(participant.getMeshDimensions(providedMeshName) == 2);
 
     std::vector<double> positions = std::vector<double>({0.5, 0.25});
     const int           meshSize  = positions.size() / dim;
     std::vector<int>    ids(meshSize, -1);
-    interface.setMeshVertices(providedMeshName, positions, ids);
+    participant.setMeshVertices(providedMeshName, positions, ids);
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Some dummy writeData
     std::vector<double> readData(ids.size(), -1);
@@ -38,12 +38,12 @@ BOOST_AUTO_TEST_CASE(DirectAccessReadWrite)
       writeData.emplace_back(i + 5);
 
     int iterations = 0;
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         // do nothing
       }
 
-      interface.readData(providedMeshName, readDataName, ids, dt, readData);
+      participant.readData(providedMeshName, readDataName, ids, dt, readData);
 
       std::vector<double> expectedData = std::vector<double>({50});
       if (iterations == 0) {
@@ -51,39 +51,39 @@ BOOST_AUTO_TEST_CASE(DirectAccessReadWrite)
       }
 
       BOOST_TEST(precice::testing::equals(expectedData, readData));
-      interface.writeData(providedMeshName, writeDataName, ids, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.writeData(providedMeshName, writeDataName, ids, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
       iterations++;
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         // do nothing
       }
     }
 
   } else {
     BOOST_TEST(context.isNamed("SolverTwo"));
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    constexpr int            dim              = 2;
-    const auto               receivedMeshName = "MeshOne";
-    const auto               writeDataName    = "Forces";
-    const auto               readDataName     = "Velocities";
-    BOOST_TEST(interface.getMeshDimensions(receivedMeshName) == 2);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    constexpr int        dim              = 2;
+    const auto           receivedMeshName = "MeshOne";
+    const auto           writeDataName    = "Forces";
+    const auto           readDataName     = "Velocities";
+    BOOST_TEST(participant.getMeshDimensions(receivedMeshName) == 2);
 
     std::array<double, dim * 2> boundingBox = std::array<double, dim * 2>{0.0, 1.0, 0.0, 1.0};
     // Define region of interest, where we could obtain direct write access
-    interface.setMeshAccessRegion(receivedMeshName, boundingBox);
+    participant.setMeshAccessRegion(receivedMeshName, boundingBox);
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
     // Get the size of the filtered mesh within the bounding box
     // (provided by the coupling participant)
-    const int receivedMeshSize = interface.getMeshVertexSize(receivedMeshName);
+    const int receivedMeshSize = participant.getMeshVertexSize(receivedMeshName);
     BOOST_TEST(receivedMeshSize == 1);
 
     // Allocate a vector containing the vertices
     std::vector<double> receivedMesh(receivedMeshSize * dim);
     std::vector<int>    receiveMeshIDs(receivedMeshSize, -1);
-    interface.getMeshVerticesAndIDs(receivedMeshName, receiveMeshIDs, receivedMesh);
+    participant.getMeshVerticesAndIDs(receivedMeshName, receiveMeshIDs, receivedMesh);
 
     // Allocate data to read and write
     std::vector<double> readData(receiveMeshIDs.size(), -1);
@@ -94,12 +94,12 @@ BOOST_AUTO_TEST_CASE(DirectAccessReadWrite)
     const std::vector<double> expectedData = std::vector<double>({0.5, 0.25});
     BOOST_TEST(receivedMesh == expectedData);
     int iterations = 0;
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         // do nothing
       }
 
-      interface.readData(receivedMeshName, readDataName, receiveMeshIDs, dt, readData);
+      participant.readData(receivedMeshName, readDataName, receiveMeshIDs, dt, readData);
 
       std::vector<double> expectedData = std::vector<double>({5});
       if (iterations == 0) {
@@ -107,11 +107,11 @@ BOOST_AUTO_TEST_CASE(DirectAccessReadWrite)
       }
 
       BOOST_TEST(precice::testing::equals(expectedData, readData));
-      interface.writeData(receivedMeshName, writeDataName, receiveMeshIDs, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.writeData(receivedMeshName, writeDataName, receiveMeshIDs, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
       iterations++;
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         // do nothing
       }
     }

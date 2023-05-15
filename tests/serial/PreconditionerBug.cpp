@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 /**
@@ -16,34 +16,34 @@ BOOST_AUTO_TEST_CASE(PreconditionerBug)
 
   using Eigen::Vector2d;
 
-  std::string              meshName = context.isNamed("SolverOne") ? "MeshOne" : "MeshTwo";
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+  std::string          meshName = context.isNamed("SolverOne") ? "MeshOne" : "MeshTwo";
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
 
   Vector2d vertex{0.0, 0.0};
 
-  precice::VertexID vertexID = interface.setMeshVertex(meshName, vertex);
+  precice::VertexID vertexID = participant.setMeshVertex(meshName, vertex);
 
-  interface.initialize();
+  participant.initialize();
   int numberOfAdvanceCalls = 0;
 
-  while (interface.isCouplingOngoing()) {
-    if (interface.requiresWritingCheckpoint()) {
+  while (participant.isCouplingOngoing()) {
+    if (participant.requiresWritingCheckpoint()) {
       // nothing
     }
     if (context.isNamed("SolverTwo")) {
       auto dataName = "DataOne";
       // to get convergence in first timestep (everything 0), but not in second timestep
       Vector2d value{0.0, 2.0 + numberOfAdvanceCalls * numberOfAdvanceCalls};
-      interface.writeData(meshName, dataName, {&vertexID, 1}, value);
+      participant.writeData(meshName, dataName, {&vertexID, 1}, value);
     }
-    interface.advance(1.0);
+    participant.advance(1.0);
 
-    if (interface.requiresReadingCheckpoint()) {
+    if (participant.requiresReadingCheckpoint()) {
       // nothing
     }
     ++numberOfAdvanceCalls;
   }
-  interface.finalize();
+  participant.finalize();
 }
 
 BOOST_AUTO_TEST_SUITE_END() // Integration

@@ -14,7 +14,7 @@
 #include "logging/Logger.hpp"
 #include "m2n/BoundM2N.hpp"
 #include "m2n/config/M2NConfiguration.hpp"
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 #include "precice/impl/DataContext.hpp"
 #include "precice/impl/SharedPointer.hpp"
 #include "precice/types.hpp"
@@ -51,14 +51,14 @@ class Mesh;
 
 namespace impl {
 
-/// Implementation of SolverInterface. See also pimpl ideom (https://en.cppreference.com/w/cpp/language/pimpl).
-class SolverInterfaceImpl {
+/// Implementation of Participant. See also pimpl ideom (https://en.cppreference.com/w/cpp/language/pimpl).
+class ParticipantImpl {
 public:
   ///@name Construction and Configuration
   ///@{
 
   /**
-   * @brief Generic constructor for SolverInterfaceImpl.
+   * @brief Generic constructor for ParticipantImpl.
    *
    * Use the parameter communicator to specify a custom global MPI communicator.
    * Pass std::nullopt to signal preCICE to use MPI_COMM_WORLD.
@@ -72,7 +72,7 @@ public:
    * @param[in] solverProcessSize The number of solver processes using preCICE.
    * @param[in] communicator An optional pointer to an MPI_Comm to use as communicator.
    */
-  SolverInterfaceImpl(
+  ParticipantImpl(
       std::string_view      participantName,
       std::string_view      configurationFileName,
       int                   solverProcessIndex,
@@ -86,20 +86,20 @@ public:
    *
    * @see finalize
    */
-  ~SolverInterfaceImpl();
+  ~ParticipantImpl();
 
   ///@}
 
   /// @name Steering Methods
   ///@{
 
-  /// @copydoc SolverInterface::initialize
+  /// @copydoc Participant::initialize
   void initialize();
 
-  /// @copydoc SolverInterface::advance
+  /// @copydoc Participant::advance
   void advance(double computedTimeStepSize);
 
-  /// @copydoc SolverInterface::finalize
+  /// @copydoc Participant::finalize
   void finalize();
 
   ///@}
@@ -107,19 +107,19 @@ public:
   ///@name Status Queries
   ///@{
 
-  /// @copydoc SolverInterface::getMeshDimensions
+  /// @copydoc Participant::getMeshDimensions
   int getMeshDimensions(std::string_view meshName) const;
 
-  /// @copydoc SolverInterface::getDataDimensions
+  /// @copydoc Participant::getDataDimensions
   int getDataDimensions(std::string_view meshName, std::string_view dataName) const;
 
-  /// @copydoc SolverInterface::isCouplingOngoing
+  /// @copydoc Participant::isCouplingOngoing
   bool isCouplingOngoing() const;
 
-  /// @copydoc SolverInterface::isTimeWindowComplete
+  /// @copydoc Participant::isTimeWindowComplete
   bool isTimeWindowComplete() const;
 
-  /// @copydoc SolverInterface::getMaxTimeStepSize
+  /// @copydoc Participant::getMaxTimeStepSize
   double getMaxTimeStepSize() const;
 
   ///@}
@@ -127,13 +127,13 @@ public:
   ///@name Requirements
   ///@{
 
-  /// @copydoc SolverInterface::requiresInitialData
+  /// @copydoc Participant::requiresInitialData
   bool requiresInitialData();
 
-  /// @copydoc SolverInterface::requiresReadingCheckpoint
+  /// @copydoc Participant::requiresReadingCheckpoint
   bool requiresReadingCheckpoint();
 
-  /// @copydoc SolverInterface::requiresWritingCheckpoint
+  /// @copydoc Participant::requiresWritingCheckpoint
   bool requiresWritingCheckpoint();
 
   ///@}
@@ -142,57 +142,57 @@ public:
   ///@anchor precice-mesh-access
   ///@{
 
-  /// @copydoc SolverInterface::resetMesh
+  /// @copydoc Participant::resetMesh
   void resetMesh(std::string_view meshName);
 
-  /// @copydoc SolverInterface::hasMesh
+  /// @copydoc Participant::hasMesh
   bool hasMesh(std::string_view meshName) const;
 
-  /// @copydoc SolverInterface::requiresMeshConnectivityFor
+  /// @copydoc Participant::requiresMeshConnectivityFor
   bool requiresMeshConnectivityFor(std::string_view meshName) const;
 
-  /// @copydoc SolverInterface::requiresGradientDataFor
+  /// @copydoc Participant::requiresGradientDataFor
   bool requiresGradientDataFor(std::string_view meshName,
                                std::string_view dataName) const;
 
-  /// @copydoc SolverInterface::setMeshVertex
+  /// @copydoc Participant::setMeshVertex
   int setMeshVertex(
       std::string_view              meshName,
       ::precice::span<const double> position);
 
-  /// @copydoc SolverInterface::getMeshVertexSize
+  /// @copydoc Participant::getMeshVertexSize
   int getMeshVertexSize(std::string_view meshName) const;
 
-  /// @copydoc SolverInterface::setMeshVertices
+  /// @copydoc Participant::setMeshVertices
   void setMeshVertices(
       std::string_view              meshName,
       ::precice::span<const double> positions,
       ::precice::span<VertexID>     ids);
 
-  /// @copydoc SolverInterface::setMeshEdge
+  /// @copydoc Participant::setMeshEdge
   void setMeshEdge(
       std::string_view meshName,
       int              firstVertexID,
       int              secondVertexID);
 
-  /// @copydoc SolverInterface::setMeshEdges
+  /// @copydoc Participant::setMeshEdges
   void setMeshEdges(
       std::string_view                meshName,
       ::precice::span<const VertexID> vertices);
 
-  /// @copydoc SolverInterface::setMeshTriangle
+  /// @copydoc Participant::setMeshTriangle
   void setMeshTriangle(
       std::string_view meshName,
       int              firstVertexID,
       int              secondVertexID,
       int              thirdVertexID);
 
-  /// @copydoc SolverInterface::setMeshTriangles
+  /// @copydoc Participant::setMeshTriangles
   void setMeshTriangles(
       std::string_view                meshName,
       ::precice::span<const VertexID> vertices);
 
-  /// @copydoc SolverInterface::setMeshQuad
+  /// @copydoc Participant::setMeshQuad
   void setMeshQuad(
       std::string_view meshName,
       int              firstVertexID,
@@ -200,12 +200,12 @@ public:
       int              thirdVertexID,
       int              fourthVertexID);
 
-  /// @copydoc SolverInterface::setMeshQuads
+  /// @copydoc Participant::setMeshQuads
   void setMeshQuads(
       std::string_view                meshName,
       ::precice::span<const VertexID> vertices);
 
-  /// @copydoc SolverInterface::setMeshTetrahedron
+  /// @copydoc Participant::setMeshTetrahedron
   void setMeshTetrahedron(
       std::string_view meshName,
       int              firstVertexID,
@@ -213,7 +213,7 @@ public:
       int              thirdVertexID,
       int              fourthVertexID);
 
-  /// @copydoc SolverInterface::setMeshTetrahedra
+  /// @copydoc Participant::setMeshTetrahedra
   void setMeshTetrahedra(
       std::string_view                meshName,
       ::precice::span<const VertexID> vertices);
@@ -223,12 +223,12 @@ public:
   ///@name Data Access
   ///@{
 
-  /// @copydoc SolverInterface::hasData
+  /// @copydoc Participant::hasData
   bool hasData(
       std::string_view meshName,
       std::string_view dataName) const;
 
-  /// @copydoc SolverInterface::readData
+  /// @copydoc Participant::readData
   void readData(
       std::string_view                meshName,
       std::string_view                dataName,
@@ -236,14 +236,14 @@ public:
       double                          relativeReadTime,
       ::precice::span<double>         values) const;
 
-  /// @copydoc SolverInterface::writeData
+  /// @copydoc Participant::writeData
   void writeData(
       std::string_view                meshName,
       std::string_view                dataName,
       ::precice::span<const VertexID> vertices,
       ::precice::span<const double>   values);
 
-  /// @copydoc SolverInterface::writeGradientData
+  /// @copydoc Participant::writeGradientData
   void writeGradientData(
       std::string_view                meshName,
       std::string_view                dataName,
@@ -257,11 +257,11 @@ public:
    */
   ///@{
 
-  /// @copydoc SolverInterface::setMeshAccessRegion
+  /// @copydoc Participant::setMeshAccessRegion
   void setMeshAccessRegion(std::string_view              meshName,
                            ::precice::span<const double> boundingBox) const;
 
-  /// @copydoc SolverInterface::getMeshVerticesAndIDs
+  /// @copydoc Participant::getMeshVerticesAndIDs
   void getMeshVerticesAndIDs(
       std::string_view          meshName,
       ::precice::span<VertexID> ids,
@@ -276,19 +276,19 @@ public:
   const mesh::Mesh &mesh(const std::string &meshName) const;
 
   /// Disable copy construction
-  SolverInterfaceImpl(SolverInterfaceImpl const &) = delete;
+  ParticipantImpl(ParticipantImpl const &) = delete;
 
   /// Disable assignment construction
-  SolverInterfaceImpl &operator=(SolverInterfaceImpl const &) = delete;
+  ParticipantImpl &operator=(ParticipantImpl const &) = delete;
 
   /// Disable move construction
-  SolverInterfaceImpl(SolverInterfaceImpl &&) = delete;
+  ParticipantImpl(ParticipantImpl &&) = delete;
 
   /// Disable move assignment
-  SolverInterfaceImpl &operator=(SolverInterfaceImpl &&) = delete;
+  ParticipantImpl &operator=(ParticipantImpl &&) = delete;
 
 private:
-  mutable logging::Logger _log{"impl::SolverInterfaceImpl"};
+  mutable logging::Logger _log{"impl::ParticipantImpl"};
 
   std::string _accessorName;
 
@@ -313,11 +313,11 @@ private:
 
   cplscheme::PtrCouplingScheme _couplingScheme;
 
-  /// Represents the various states a SolverInterface can be in.
+  /// Represents the various states a Participant can be in.
   enum struct State {
-    Constructed, // Initial state of SolverInterface
-    Initialized, // SolverInterface.initialize() triggers transition from State::Constructed to State::Initialized; mandatory
-    Finalized    // SolverInterface.finalize() triggers transition form State::Initialized to State::Finalized; mandatory
+    Constructed, // Initial state of Participant
+    Initialized, // Participant.initialize() triggers transition from State::Constructed to State::Initialized; mandatory
+    Finalized    // Participant.finalize() triggers transition form State::Initialized to State::Finalized; mandatory
   };
 
   /// Are experimental API calls allowed?
@@ -326,16 +326,16 @@ private:
   /// setMeshAccessRegion may only be called once
   mutable bool _accessRegionDefined = false;
 
-  /// The current State of the solverinterface
+  /// The current State of the participant
   State _state{State::Constructed};
 
   /// Counts calls to advance for plotting.
   long int _numberAdvanceCalls = 0;
 
   /**
-   * @brief Configures the coupling interface from the given xml file.
+   * @brief Configures the coupling participant from the given xml file.
    *
-   * Only after the configuration a reasonable state of a SolverInterfaceImpl
+   * Only after the configuration a reasonable state of a ParticipantImpl
    * object is achieved.
    *
    * @param[in] configurationFileName Name (with path) of the xml config. file.
@@ -343,9 +343,9 @@ private:
   void configure(std::string_view configurationFileName);
 
   /**
-   * @brief Configures the coupling interface with a prepared configuration.
+   * @brief Configures the coupling participant with a prepared configuration.
    *
-   * Can be used to configure the SolverInterfaceImpl without xml file. Requires
+   * Can be used to configure the ParticipantImpl without xml file. Requires
    * to manually setup the configuration object.
    */
   void configure(const config::SolverInterfaceConfiguration &configuration);

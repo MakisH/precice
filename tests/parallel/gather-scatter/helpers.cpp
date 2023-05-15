@@ -2,7 +2,7 @@
 
 #include "helpers.hpp"
 
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 #include "testing/Testing.hpp"
 
 // In order to test enforced gather scatter communication with an empty primary rank (see below)
@@ -10,11 +10,11 @@ void runTestEnforceGatherScatter(std::vector<double> primaryPartition, const Tes
 {
   if (context.isNamed("ParallelSolver")) {
     // Get mesh and data IDs
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto                     meshName      = "ParallelMesh";
-    auto                     writeDataName = "MyData1";
-    auto                     readDataName  = "MyData2";
-    const int                dim           = interface.getMeshDimensions(meshName);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    auto                 meshName      = "ParallelMesh";
+    auto                 writeDataName = "MyData1";
+    auto                 readDataName  = "MyData2";
+    const int            dim           = participant.getMeshDimensions(meshName);
     BOOST_TEST(dim == 2);
 
     // Set coordinates, primary according to input argument
@@ -23,11 +23,11 @@ void runTestEnforceGatherScatter(std::vector<double> primaryPartition, const Tes
     std::vector<int>          ids(size, 0);
 
     // Set mesh vertices
-    interface.setMeshVertices(meshName, coordinates, ids);
+    participant.setMeshVertices(meshName, coordinates, ids);
 
-    // Initialize the solverinterface
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    // Initialize the participant
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Create some dummy writeData
     std::vector<double> writeData;
@@ -37,13 +37,13 @@ void runTestEnforceGatherScatter(std::vector<double> primaryPartition, const Tes
 
     // Allocate memory for readData
     std::vector<double> readData(size);
-    while (interface.isCouplingOngoing()) {
-      // Write data, advance the solverinterface and readData
-      interface.writeData(meshName, writeDataName, ids, writeData);
+    while (participant.isCouplingOngoing()) {
+      // Write data, advance the participant and readData
+      participant.writeData(meshName, writeDataName, ids, writeData);
 
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
-      interface.readData(meshName, readDataName, ids, dt, readData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
+      participant.readData(meshName, readDataName, ids, dt, readData);
       // The received data on the secondary rank is always the same
       if (!context.isPrimary()) {
         BOOST_TEST(readData == std::vector<double>({3.4, 5.7, 4.0}));
@@ -52,37 +52,37 @@ void runTestEnforceGatherScatter(std::vector<double> primaryPartition, const Tes
   } else {
     // The serial participant
     BOOST_REQUIRE(context.isNamed("SerialSolver"));
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
     // Get IDs
     auto      meshName      = "SerialMesh";
     auto      writeDataName = "MyData2";
     auto      readDataName  = "MyData1";
-    const int dim           = interface.getMeshDimensions(meshName);
-    BOOST_TEST(interface.getMeshDimensions(meshName) == 2);
+    const int dim           = participant.getMeshDimensions(meshName);
+    BOOST_TEST(participant.getMeshDimensions(meshName) == 2);
 
-    // Define the interface
+    // Define the participant
     const std::vector<double> coordinates{0.0, 0.5, 0.0, 3.5, 0.0, 5.0};
     const unsigned int        size = coordinates.size() / dim;
     std::vector<int>          ids(size);
 
     // Set vertices
-    interface.setMeshVertices(meshName, coordinates, ids);
+    participant.setMeshVertices(meshName, coordinates, ids);
 
-    // Initialize the solverinterface
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    // Initialize the participant
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // Somce arbitrary write data
     std::vector<double> writeData{3.4, 5.7, 4.0};
     std::vector<double> readData(size);
 
     // Start the time loop
-    while (interface.isCouplingOngoing()) {
-      // Write data, advance solverinterface and read data
-      interface.writeData(meshName, writeDataName, ids, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
-      interface.readData(meshName, readDataName, ids, dt, readData);
+    while (participant.isCouplingOngoing()) {
+      // Write data, advance participant and read data
+      participant.writeData(meshName, writeDataName, ids, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
+      participant.readData(meshName, readDataName, ids, dt, readData);
       // The received data is always the same
       if (!context.isPrimary()) {
         BOOST_TEST(readData == std::vector<double>({1, 2, 3}));

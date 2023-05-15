@@ -51,7 +51,7 @@ def get_file_lists(root):
     src_dir = os.path.join(root, "src")
     tests_dir = os.path.join(root, "tests")
 
-    # Find interface headers
+    # Find participant headers
     public = glob.glob(os.path.join(src_dir, "precice", "*.hpp"))
     public += CONFIGURED_PUBLIC
     public = [os.path.relpath(p, root) for p in public]

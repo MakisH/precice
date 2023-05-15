@@ -12,10 +12,10 @@
 #include "mesh/Data.hpp"
 #include "mesh/Mesh.hpp"
 #include "mesh/Utils.hpp"
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
+#include "precice/impl/ParticipantImpl.hpp"
 #include "precice/impl/ParticipantState.hpp"
 #include "precice/impl/SharedPointer.hpp"
-#include "precice/impl/SolverInterfaceImpl.hpp"
 #include "precice/types.hpp"
 #include "testing/TestContext.hpp"
 #include "testing/Testing.hpp"
@@ -34,86 +34,86 @@ BOOST_AUTO_TEST_CASE(GradientTestParallelWriteVector)
   PRECICE_TEST("SolverOne"_on(2_ranks), "SolverTwo"_on(2_ranks));
 
   if (context.isNamed("SolverOne")) {
-    SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto            meshName = "MeshOne";
-    auto            dataName = "Data2";
+    Participant participant(context.name, context.config(), context.rank, context.size);
+    auto        meshName = "MeshOne";
+    auto        dataName = "Data2";
 
     if (context.isPrimary()) {
       std::vector<int>    vertexIDs(2);
       std::vector<double> positions = {1.0, 1.0, 2.0, 2., 2., 3.0};
-      interface.setMeshVertices(meshName, positions, vertexIDs);
-      interface.initialize();
+      participant.setMeshVertices(meshName, positions, vertexIDs);
+      participant.initialize();
       Eigen::Vector3d values;
-      interface.advance(1.0);
-      interface.readData(meshName, dataName, {&vertexIDs[0], 1}, interface.getMaxTimeStepSize(), values);
+      participant.advance(1.0);
+      participant.readData(meshName, dataName, {&vertexIDs[0], 1}, participant.getMaxTimeStepSize(), values);
       Eigen::Vector3d expected(21.1, 24.8, 28.5);
-      BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName) == false);
+      BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName) == false);
       BOOST_TEST(testing::equals(values, expected));
-      interface.readData(meshName, dataName, {&vertexIDs[1], 1}, interface.getMaxTimeStepSize(), values);
+      participant.readData(meshName, dataName, {&vertexIDs[1], 1}, participant.getMaxTimeStepSize(), values);
       Eigen::Vector3d expected2(2.3, 4.2, 6.1);
       BOOST_TEST(testing::equals(values, expected2));
     } else {
       std::vector<int>    vertexIDs(1);
       std::vector<double> positions = {4.0, 4.0, 4.0};
-      interface.setMeshVertices(meshName, positions, vertexIDs);
-      interface.initialize();
+      participant.setMeshVertices(meshName, positions, vertexIDs);
+      participant.initialize();
       Eigen::Vector3d values;
-      interface.advance(1.0);
-      interface.readData(meshName, dataName, vertexIDs, interface.getMaxTimeStepSize(), values);
+      participant.advance(1.0);
+      participant.readData(meshName, dataName, vertexIDs, participant.getMaxTimeStepSize(), values);
       Eigen::Vector3d expected(1., 2., 3.);
-      BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName) == false);
+      BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName) == false);
       BOOST_TEST(testing::equals(values, expected));
     }
-    interface.finalize();
+    participant.finalize();
   } else {
     BOOST_REQUIRE(context.isNamed("SolverTwo"));
-    SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    auto            meshName = "MeshTwo";
+    Participant participant(context.name, context.config(), context.rank, context.size);
+    auto        meshName = "MeshTwo";
     if (context.isPrimary()) {
       std::vector<int>    vertexIDs(4);
       std::vector<double> positions = {4.0, 4.0, 4.0, 0.0, 0.4, 0.0, 0.7, 0.7, 1.7, 0.0, 1.0, 0.0};
-      interface.setMeshVertices(meshName, positions, vertexIDs);
-      interface.initialize();
+      participant.setMeshVertices(meshName, positions, vertexIDs);
+      participant.initialize();
       auto                dataName = "Data2";
       std::vector<double> values   = {1.0, 2.0, 3.0,
                                     -1.0, -1.0, -1.0,
                                     4.0, 5.0, 6.0,
                                     0.0, 0.0, 0.0};
 
-      interface.writeData(meshName, dataName, vertexIDs, values);
+      participant.writeData(meshName, dataName, vertexIDs, values);
 
-      BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName) == true);
+      BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName) == true);
 
-      if (interface.requiresGradientDataFor(meshName, dataName)) {
+      if (participant.requiresGradientDataFor(meshName, dataName)) {
         std::vector<double> gradients;
         for (unsigned int i = 0; i < 36; ++i) {
           gradients.emplace_back(i);
         }
-        interface.writeGradientData(meshName, dataName, vertexIDs, gradients);
+        participant.writeGradientData(meshName, dataName, vertexIDs, gradients);
       }
     } else {
       // Assigned to the first rank
       std::vector<int>    vertexIDs(1);
       std::vector<double> positions = {2.1, 2.1, 3.1};
-      interface.setMeshVertices(meshName, positions, vertexIDs);
-      interface.initialize();
+      participant.setMeshVertices(meshName, positions, vertexIDs);
+      participant.initialize();
       auto                dataName = "Data2";
       std::vector<double> values   = {2.0, 3.0, 4.0};
 
-      interface.writeData(meshName, dataName, vertexIDs, values);
+      participant.writeData(meshName, dataName, vertexIDs, values);
 
-      BOOST_TEST(interface.requiresGradientDataFor(meshName, dataName) == true);
+      BOOST_TEST(participant.requiresGradientDataFor(meshName, dataName) == true);
 
-      if (interface.requiresGradientDataFor(meshName, dataName)) {
+      if (participant.requiresGradientDataFor(meshName, dataName)) {
         std::vector<double> gradients;
         for (int i = 0; i < 9; ++i) {
           gradients.emplace_back(-i);
         }
-        interface.writeGradientData(meshName, dataName, {&vertexIDs[0], 1}, gradients);
+        participant.writeGradientData(meshName, dataName, {&vertexIDs[0], 1}, gradients);
       }
     }
-    interface.advance(1.0);
-    interface.finalize();
+    participant.advance(1.0);
+    participant.finalize();
   }
 }
 

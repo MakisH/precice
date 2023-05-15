@@ -3,7 +3,7 @@
 #include "helpers.hpp"
 #include "testing/Testing.hpp"
 
-#include "precice/SolverInterface.hpp"
+#include "precice/Participant.hpp"
 
 void testConvergenceMeasures(const std::string configFile, TestContext const &context, std::vector<int> &expectedIterations)
 {
@@ -11,40 +11,40 @@ void testConvergenceMeasures(const std::string configFile, TestContext const &co
 
   std::string meshName = context.isNamed("SolverOne") ? "MeshOne" : "MeshTwo";
 
-  precice::SolverInterface interface(context.name, configFile, 0, 1);
+  precice::Participant participant(context.name, configFile, 0, 1);
 
   Vector2d vertex{0.0, 0.0};
 
   std::vector<double> writeValues = {1.0, 1.01, 2.0, 2.5, 2.8, 2.81};
 
-  VertexID vertexID = interface.setMeshVertex(meshName, vertex);
+  VertexID vertexID = participant.setMeshVertex(meshName, vertex);
 
-  interface.initialize();
+  participant.initialize();
   int numberOfAdvanceCalls = 0;
   int numberOfIterations   = -1;
   int timestep             = 0;
 
-  while (interface.isCouplingOngoing()) {
-    if (interface.requiresWritingCheckpoint()) {
+  while (participant.isCouplingOngoing()) {
+    if (participant.requiresWritingCheckpoint()) {
       numberOfIterations = 0;
     }
 
     if (context.isNamed("SolverTwo")) {
       auto dataName = "Data2";
-      interface.writeData(meshName, dataName, {&vertexID, 1}, {&writeValues.at(numberOfAdvanceCalls), 1});
+      participant.writeData(meshName, dataName, {&vertexID, 1}, {&writeValues.at(numberOfAdvanceCalls), 1});
     }
 
-    interface.advance(1.0);
+    participant.advance(1.0);
     ++numberOfAdvanceCalls;
     ++numberOfIterations;
 
-    if (interface.requiresReadingCheckpoint()) {
+    if (participant.requiresReadingCheckpoint()) {
     } else { //converged
       BOOST_TEST(numberOfIterations == expectedIterations.at(timestep));
       ++timestep;
     }
   }
-  interface.finalize();
+  participant.finalize();
 }
 
 #endif

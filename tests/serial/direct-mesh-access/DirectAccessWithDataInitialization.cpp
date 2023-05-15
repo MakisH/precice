@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 // Test case for a direct mesh access while also using data initialization to test the integration of the two features.
@@ -15,39 +15,39 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
 
   if (context.isNamed("SolverOne")) {
     // Set up Solverinterface
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    constexpr int            dim         = 2;
-    const auto               ownMeshID   = "MeshOne";
-    const auto               otherMeshID = "MeshTwo";
-    const auto               readDataID  = "Forces";
-    const auto               writeDataID = "Velocities";
-    BOOST_REQUIRE(interface.getMeshDimensions(ownMeshID) == 2);
-    BOOST_REQUIRE(interface.getMeshDimensions(otherMeshID) == 2);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    constexpr int        dim         = 2;
+    const auto           ownMeshID   = "MeshOne";
+    const auto           otherMeshID = "MeshTwo";
+    const auto           readDataID  = "Forces";
+    const auto           writeDataID = "Velocities";
+    BOOST_REQUIRE(participant.getMeshDimensions(ownMeshID) == 2);
+    BOOST_REQUIRE(participant.getMeshDimensions(otherMeshID) == 2);
 
     std::vector<double> ownPositions = std::vector<double>({0.5, 0.25});
     std::vector<int>    ownIDs(ownPositions.size() / dim, -1);
-    interface.setMeshVertices(ownMeshID, ownPositions, ownIDs);
+    participant.setMeshVertices(ownMeshID, ownPositions, ownIDs);
 
     std::array<double, dim * 2> boundingBox = std::array<double, dim * 2>{0.0, 1.0, 0.0, 1.0};
     // Define region of interest, where we could obtain direct write access
-    interface.setMeshAccessRegion(otherMeshID, boundingBox);
+    participant.setMeshAccessRegion(otherMeshID, boundingBox);
 
     std::vector<double> readData(ownIDs.size(), -1);
-    int                 otherMeshSize = 1; // @todo hard-coded, because we cannot read this from preCICE before interface.initialize(). See https://github.com/precice/precice/issues/1583.
+    int                 otherMeshSize = 1; // @todo hard-coded, because we cannot read this from preCICE before participant.initialize(). See https://github.com/precice/precice/issues/1583.
     std::vector<double> writeData(otherMeshSize, -1);
 
-    BOOST_TEST(!interface.requiresInitialData());
+    BOOST_TEST(!participant.requiresInitialData());
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
     // Get the size of the filtered mesh within the bounding box
     // (provided by the coupling participant)
-    BOOST_TEST(otherMeshSize == interface.getMeshVertexSize(otherMeshID)); // @todo would need to know this already earlier (see above).
+    BOOST_TEST(otherMeshSize == participant.getMeshVertexSize(otherMeshID)); // @todo would need to know this already earlier (see above).
     BOOST_TEST(otherMeshSize == 1);
 
     std::vector<double> otherPositions(otherMeshSize * dim);
     std::vector<int>    otherIDs(otherMeshSize, -1);
-    interface.getMeshVerticesAndIDs(otherMeshID, otherIDs, otherPositions);
+    participant.getMeshVerticesAndIDs(otherMeshID, otherIDs, otherPositions);
 
     // writeData for first window
     for (int i = 0; i < otherMeshSize; ++i) {
@@ -57,12 +57,12 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
     int iterations = 0;
     int timeWindow = 0;
 
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         // do nothing
       }
 
-      interface.readData(ownMeshID, readDataID, ownIDs, dt, readData);
+      participant.readData(ownMeshID, readDataID, ownIDs, dt, readData);
 
       std::vector<double> expectedData = std::vector<double>({-1});
 
@@ -81,14 +81,14 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
       }
 
       BOOST_TEST(precice::testing::equals(expectedData, readData));
-      interface.writeData(otherMeshID, writeDataID, otherIDs, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.writeData(otherMeshID, writeDataID, otherIDs, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
       iterations++;
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         // do nothing
       }
-      if (interface.isTimeWindowComplete()) {
+      if (participant.isTimeWindowComplete()) {
         timeWindow++;
         iterations = 0;
         for (int i = 0; i < otherMeshSize; ++i) {
@@ -99,16 +99,16 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
 
   } else {
     BOOST_TEST(context.isNamed("SolverTwo"));
-    precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-    constexpr int            dim           = 2;
-    const auto               meshName      = "MeshTwo";
-    const auto               writeDataName = "Forces";
-    const auto               readDataName  = "Velocities";
-    BOOST_REQUIRE(interface.getMeshDimensions(meshName) == 2);
+    precice::Participant participant(context.name, context.config(), context.rank, context.size);
+    constexpr int        dim           = 2;
+    const auto           meshName      = "MeshTwo";
+    const auto           writeDataName = "Forces";
+    const auto           readDataName  = "Velocities";
+    BOOST_REQUIRE(participant.getMeshDimensions(meshName) == 2);
 
     std::vector<double> positions = std::vector<double>({0.5, 0.25});
     std::vector<int>    ids(positions.size() / dim, -1);
-    interface.setMeshVertices(meshName, positions, ids);
+    participant.setMeshVertices(meshName, positions, ids);
 
     std::vector<double> readData(ids.size(), -1);
     std::vector<double> writeData;
@@ -118,12 +118,12 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
       writeData.emplace_back(20);
     }
 
-    if (interface.requiresInitialData()) {
-      interface.writeData(meshName, writeDataName, ids, writeData);
+    if (participant.requiresInitialData()) {
+      participant.writeData(meshName, writeDataName, ids, writeData);
     }
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
 
     // writeData for first window
     for (unsigned int i = 0; i < ids.size(); ++i) {
@@ -133,12 +133,12 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
     int iterations = 0;
     int timeWindow = 0;
 
-    while (interface.isCouplingOngoing()) {
-      if (interface.requiresWritingCheckpoint()) {
+    while (participant.isCouplingOngoing()) {
+      if (participant.requiresWritingCheckpoint()) {
         // do nothing
       }
 
-      interface.readData(meshName, readDataName, ids, dt, readData);
+      participant.readData(meshName, readDataName, ids, dt, readData);
 
       std::vector<double> expectedData = std::vector<double>({-1});
 
@@ -158,14 +158,14 @@ BOOST_AUTO_TEST_CASE(DirectAccessWithDataInitialization)
       }
 
       BOOST_TEST(precice::testing::equals(expectedData, readData));
-      interface.writeData(meshName, writeDataName, ids, writeData);
-      interface.advance(dt);
-      double dt = interface.getMaxTimeStepSize();
+      participant.writeData(meshName, writeDataName, ids, writeData);
+      participant.advance(dt);
+      double dt = participant.getMaxTimeStepSize();
       iterations++;
-      if (interface.requiresReadingCheckpoint()) {
+      if (participant.requiresReadingCheckpoint()) {
         // do nothing
       }
-      if (interface.isTimeWindowComplete()) {
+      if (participant.isTimeWindowComplete()) {
         timeWindow++;
         iterations = 0;
         for (std::size_t i = 0; i < ids.size(); ++i) {

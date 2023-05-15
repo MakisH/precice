@@ -2,7 +2,7 @@
 
 #include "testing/Testing.hpp"
 
-#include <precice/SolverInterface.hpp>
+#include <precice/Participant.hpp>
 #include <vector>
 
 BOOST_AUTO_TEST_SUITE(Integration)
@@ -14,43 +14,43 @@ BOOST_AUTO_TEST_CASE(MultipleReadFromMappings)
 
   using Eigen::Vector2d;
 
-  precice::SolverInterface interface(context.name, context.config(), context.rank, context.size);
-  Vector2d                 vertex{0.0, 0.0};
+  precice::Participant participant(context.name, context.config(), context.rank, context.size);
+  Vector2d             vertex{0.0, 0.0};
 
   if (context.isNamed("A")) {
     auto meshNameTop    = "MeshATop";
     auto meshNameBottom = "MeshABottom";
-    int  vertexIDTop    = interface.setMeshVertex(meshNameTop, vertex);
-    int  vertexIDBottom = interface.setMeshVertex(meshNameBottom, vertex);
+    int  vertexIDTop    = participant.setMeshVertex(meshNameTop, vertex);
+    int  vertexIDBottom = participant.setMeshVertex(meshNameBottom, vertex);
     auto dataNameTop    = "Pressure";
     auto dataNameBottom = "Pressure";
 
-    interface.initialize();
-    double dt = interface.getMaxTimeStepSize();
-    interface.advance(dt);
+    participant.initialize();
+    double dt = participant.getMaxTimeStepSize();
+    participant.advance(dt);
     double pressure = -1.0;
-    dt              = interface.getMaxTimeStepSize();
-    interface.readData(meshNameTop, dataNameTop, {&vertexIDTop, 1}, dt, {&pressure, 1});
+    dt              = participant.getMaxTimeStepSize();
+    participant.readData(meshNameTop, dataNameTop, {&vertexIDTop, 1}, dt, {&pressure, 1});
     BOOST_TEST(pressure == 1.0);
     pressure = -1.0;
-    interface.readData(meshNameBottom, dataNameBottom, {&vertexIDBottom, 1}, dt, {&pressure, 1});
+    participant.readData(meshNameBottom, dataNameBottom, {&vertexIDBottom, 1}, dt, {&pressure, 1});
     BOOST_TEST(pressure == 1.0);
-    BOOST_TEST(not interface.isCouplingOngoing());
-    interface.finalize();
+    BOOST_TEST(not participant.isCouplingOngoing());
+    participant.finalize();
 
   } else {
     BOOST_TEST(context.isNamed("B"));
     auto meshName = "MeshB";
-    int  vertexID = interface.setMeshVertex(meshName, vertex);
+    int  vertexID = participant.setMeshVertex(meshName, vertex);
     auto dataName = "Pressure";
 
-    interface.initialize();
+    participant.initialize();
     double pressure = 1.0;
-    interface.writeData(meshName, dataName, {&vertexID, 1}, {&pressure, 1});
-    double dt = interface.getMaxTimeStepSize();
-    interface.advance(dt);
-    BOOST_TEST(not interface.isCouplingOngoing());
-    interface.finalize();
+    participant.writeData(meshName, dataName, {&vertexID, 1}, {&pressure, 1});
+    double dt = participant.getMaxTimeStepSize();
+    participant.advance(dt);
+    BOOST_TEST(not participant.isCouplingOngoing());
+    participant.finalize();
   }
 }
 
