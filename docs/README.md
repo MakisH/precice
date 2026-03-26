@@ -1,5 +1,7 @@
 # preCICE #
 
+Adding this line in this file is part of an experiment.
+
 **Project Status**  
 [![Build status](https://github.com/precice/precice/workflows/Build%20and%20Test/badge.svg)](https://github.com/precice/precice/actions?query=workflow%3A%22Build+and+Test%22+branch%3Adevelop)
 [![Release](https://img.shields.io/github/release/precice/precice.svg)](https://github.com/precice/precice/releases/latest)
